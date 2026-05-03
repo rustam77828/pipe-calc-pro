@@ -16,9 +16,8 @@ st.markdown("""
 
 # 2. Инициализация памяти
 if 'active_field' not in st.session_state: st.session_state.active_field = 'D'
-if 'D_val' not in st.session_state: st.session_state.D_val = ""
-if 't_val' not in st.session_state: st.session_state.t_val = ""
-if 'B_val' not in st.session_state: st.session_state.B_val = ""
+for f in ['D_val', 't_val', 'B_val']:
+    if f not in st.session_state: st.session_state[f] = ""
 if 'start_ts' not in st.session_state: st.session_state.start_ts = None
 
 
@@ -82,12 +81,19 @@ calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=Tr
 st.title("⚙️ Production Setup Card")
 st.markdown("### Engineering Calculation")
 
-timer_p = st.empty()
-# Используем простую логику таймера, которая точно работает везде
-if st.session_state.start_ts:
-    el = int(time.time() - st.session_state.start_ts)
-    h, m, s = el // 3600, (el % 3600) // 60, el % 60
-    timer_p.markdown(f"⏱️ **Time since setup:** `{h:02d}:{m:02d}:{s:02d}`")
+# --- СЕКЦИЯ ТАЙМЕРА (С ФРАГМЕНТОМ) ---
+timer_area = st.empty()
+
+
+@st.fragment(run_every=1)
+def run_timer():
+    if st.session_state.start_ts:
+        el = int(time.time() - st.session_state.start_ts)
+        h, m, s = el // 3600, (el % 3600) // 60, el % 60
+        timer_area.markdown(f"⏱️ **Time since setup:** `{h:02d}:{m:02d}:{s:02d}`")
+
+
+run_timer()
 
 if calc_btn:
     try:
@@ -120,8 +126,10 @@ if calc_btn:
             wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
 
         st.success("100% Accuracy Confirmed")
+        st.rerun()  # Нужно, чтобы таймер сразу отрисовал 00:00:01
     except:
         st.sidebar.error("❌ Enter all parameters!")
+
 
 
 
