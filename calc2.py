@@ -1,19 +1,53 @@
 import streamlit as st
 import math
 import time
+import requests
+import os
+from dotenv import load_dotenv
 
+# Загрузка ключей из .env (для локальной работы)
+load_dotenv()
 
 # 1. Настройка страницы
 st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wide")
 
-# CSS для фиксации клавиатуры 3х4
+# CSS для фиксации клавиатуры и стильного виджета погоды
 st.markdown("""
     <style>
     [data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 5px !important; }
     [data-testid="stHorizontalBlock"] > div { width: 33% !important; flex: 1 1 33% !important; min-width: 0 !important; }
     .stButton > button { width: 100% !important; height: 50px !important; font-size: 20px !important; }
+    .weather-text { text-align: right; font-size: 45px; font-weight: bold; margin-bottom: -10px; line-height: 1; }
+    .weather-sub { text-align: right; font-size: 14px; color: gray; margin: 0; }
     </style>
 """, unsafe_allow_html=True)
+
+
+# --- ПРОФЕССИОНАЛЬНАЯ ФУНКЦИЯ ПОГОДЫ (API) ---
+def get_weather():
+    # 1. Забираем ключ (из .env дома или из Secrets в облаке)
+    raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
+    if not raw_key: return "No Key"
+
+    api_key = raw_key.strip()
+    city = "Beersheba"
+
+    # 2. Правильная ссылка для OpenWeather
+    url = f"https://openweathermap.org{city}&appid={api_key}&units=metric"
+
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            data = res.json()
+            temp = int(data['main']['temp'])
+            # Выбираем иконку по погоде
+            main = data['weather'][0]['main'].lower()
+            icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
+            return f"{temp}°C {icon}"
+        else:
+            return f"Error {res.status_code}"
+    except:
+        return "Conn Error"
 
 # 2. Инициализация памяти
 if 'active_field' not in st.session_state: st.session_state.active_field = 'D'
@@ -47,7 +81,19 @@ WELDING_TABLE = [
     {"t": 25.4, "speed": 1.1, "ac_in": "550A/34V", "dc_in": "1250A/32V", "ac_out": "550A/32V", "dc_out": "1300A/31V"}
 ]
 
-# 3. Боковая панель
+# 3. Шапка сайта (Заголовок + Погода)
+col_title, col_weather = st.columns([2, 1])
+
+with col_title:
+    st.title("⚙️ Production Setup Card")
+    st.markdown("### Engineering Calculation")
+
+with col_weather:
+    weather_data = get_weather()
+    st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
+    st.markdown('<p class="weather-sub">Be\'er Sheva</p>', unsafe_allow_html=True)
+
+# 4. Боковая панель
 st.sidebar.header("Parameters")
 c1, c2, c3 = st.sidebar.columns(3)
 if c1.button("D", use_container_width=True): st.session_state.active_field = 'D'
@@ -78,11 +124,7 @@ for i, k in enumerate(keys):
 
 calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=True)
 
-# 4. Основной экран
-st.title("⚙️ Production Setup Card")
-st.markdown("### Engineering Calculation")
-
-# --- СЕКЦИЯ ТАЙМЕРА (С ФРАГМЕНТОМ) ---
+# Таймер
 timer_area = st.empty()
 
 
@@ -96,14 +138,13 @@ def run_timer():
 
 run_timer()
 
+# --- ЛОГИКА МАТЕМАТИКИ (НЕ ИЗМЕНЕНА) ---
 if calc_btn:
     try:
         D = float(st.session_state.D_val.replace(',', '.'))
         t = float(st.session_state.t_val.replace(',', '.'))
         B = float(st.session_state.B_val.replace(',', '.'))
-
         st.session_state.start_ts = time.time()
-
         Dm, Di = D - t, D - (2 * t)
         Ri = Di / 2
         a_in = math.degrees(math.asin(B / (math.pi * Dm)))
@@ -125,9 +166,7 @@ if calc_btn:
             wc1, wc2 = st.columns(2)
             wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
             wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
-
         st.success("100% Accuracy Confirmed")
-        st.rerun()  # Нужно, чтобы таймер сразу отрисовал 00:00:01
+        st.rerun()
     except:
         st.sidebar.error("❌ Enter all parameters!")
-
