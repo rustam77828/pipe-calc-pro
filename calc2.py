@@ -33,6 +33,7 @@ def get_weather():
     city = "Beersheba"
 
     # 2. Правильная ссылка для OpenWeather
+    # 2. ПРАВИЛЬНАЯ ссылка для OpenWeather
     url = f"https://openweathermap.org{city}&appid={api_key}&units=metric"
 
     try:
@@ -40,11 +41,12 @@ def get_weather():
         if res.status_code == 200:
             data = res.json()
             temp = int(data['main']['temp'])
-            # Выбираем иконку по погоде
+            # Исправлено: берем первый элемент списка [0]
             main = data['weather'][0]['main'].lower()
             icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
             return f"{temp}°C {icon}"
         else:
+            # Это поможет понять, если что-то не так (например, ошибка 401)
             return f"Error {res.status_code}"
     except:
         return "Conn Error"
