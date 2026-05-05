@@ -36,6 +36,7 @@ def get_weather():
     # 2. ПРАВИЛЬНАЯ ссылка для OpenWeather
     url = f"https://openweathermap.org{city}&appid={api_key}&units=metric"
 
+
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
