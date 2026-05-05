@@ -2,6 +2,48 @@ import streamlit as st
 import math
 import time
 
+# 1. Инициализация системы безопасности
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'pin' not in st.session_state:
+    st.session_state.pin = ""
+
+SECRET_PIN = "1977"  # ЗАМЕНИ НА СВОЙ КОД ТУТ
+
+# --- ЭКРАН ВХОДА (ТОЛЬКО МЫШКА) ---
+if not st.session_state.authenticated:
+    st.set_page_config(page_title="Pipe Pro Login", page_icon="🔒", layout="centered")
+
+    # Центрируем всё через колонки
+    _, center_col, _ = st.columns([1, 2, 1])
+
+    with center_col:
+        st.title("🔒 Pipe Pro Access")
+        st.write(f"### PIN: `{'*' * len(st.session_state.pin)}`")
+
+        # Сетка кнопок 3х4 для ввода мышкой
+        keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', 'OK']
+        btn_cols = st.columns(3)
+
+        for i, key in enumerate(keys):
+            if btn_cols[i % 3].button(key, key=f"login_{key}", use_container_width=True):
+                if key == 'C':
+                    st.session_state.pin = ""
+                elif key == 'OK':
+                    if st.session_state.pin == SECRET_PIN:
+                        st.session_state.authenticated = True
+                        st.rerun()
+                    else:
+                        st.error("Access Denied")
+                        st.session_state.pin = ""
+                else:
+                    if len(st.session_state.pin) < 8:  # Ограничение на длину
+                        st.session_state.pin += key
+                st.rerun()
+    st.stop()  # Не даем коду идти дальше без пароля
+
+# --- ОСНОВНОЕ ПРИЛОЖЕНИЕ (ВЫПОЛНЯЕТСЯ ТОЛЬКО ПОСЛЕ ВХОДА) ---
+
 # 1. Настройка страницы
 st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wide")
 
@@ -14,7 +56,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. Инициализация памяти
+# 2. Инициализация памяти калькулятора
 if 'active_field' not in st.session_state: st.session_state.active_field = 'D'
 for f in ['D_val', 't_val', 'B_val']:
     if f not in st.session_state: st.session_state[f] = ""
@@ -81,7 +123,6 @@ calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=Tr
 st.title("⚙️ Production Setup Card")
 st.markdown("### Engineering Calculation")
 
-# --- СЕКЦИЯ ТАЙМЕРА (С ФРАГМЕНТОМ) ---
 timer_area = st.empty()
 
 
@@ -125,18 +166,8 @@ if calc_btn:
             wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
             wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
 
-        st.success("100% Accuracy Confirmed")
-        st.rerun()  # Нужно, чтобы таймер сразу отрисовал 00:00:01
+        st.success("Access Granted & Accuracy Confirmed")
+        st.rerun()
     except:
         st.sidebar.error("❌ Enter all parameters!")
-
-
-
-
-
-
-
-
-
-
 
