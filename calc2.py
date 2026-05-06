@@ -12,45 +12,41 @@ st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wi
 # ---------------- CSS ----------------
 st.markdown("""
 <style>
-/* Базовый стиль для кнопок (ПК) */
+
+[data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 5px !important;
+}
+
+[data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] > div {
+    width: 33% !important;
+    flex: 1 1 33% !important;
+    min-width: 0 !important;
+}
+
 .stButton > button {
     width: 100% !important;
     height: 50px !important;
     font-size: 20px !important;
 }
 
-/* Адаптация под мобильные устройства */
-@media (max-width: 480px) {
-    .stButton > button {
-        height: 40px !important; /* Уменьшаем высоту на телефоне */
-        font-size: 16px !important; /* Уменьшаем шрифт, чтобы цифры влезали */
-    }
-    
-    /* Делаем блок с цифрами компактнее на мобилках */
-    [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] {
-        gap: 2px !important;
-    }
-}
-
-}
-/* Стиль для блока погоды */
-.weather-container {
-    text-align: right;
-    margin-bottom: 15px;
-}
 .weather-text {
-    font-size: 32px;
+    text-align: right;
+    font-size: 45px;
     font-weight: bold;
-    margin-bottom: -5px;
+    margin-bottom: -10px;
     line-height: 1;
 }
+
 .weather-sub {
+    text-align: right;
     font-size: 14px;
     color: gray;
     margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 1px;
 }
+
 </style>
 """, unsafe_allow_html=True)
 
