@@ -51,6 +51,7 @@ def get_weather(city_name):
     if not raw_key: return "No Key"
     
     api_key = raw_key.strip()
+    # Правильный URL для API
     url = f"https://openweathermap.org{city_name}&appid={api_key}&units=metric"
 
     try:
@@ -58,13 +59,17 @@ def get_weather(city_name):
         if res.status_code == 200:
             data = res.json()
             temp = int(data['main']['temp'])
-            main = data['weather'][0]['main'].lower()
-            # Простая логика иконок
-            icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
+            # ВАЖНО: weather — это список, берем первый элемент [0]
+            main_condition = data['weather'][0]['main'].lower()
+            
+            icon = "☀️" if "clear" in main_condition else "☁️" if "cloud" in main_condition else "🌧️"
             return f"{temp}°C {icon}"
-        return f"Err {res.status_code}" # Вернет код ошибки (например, 401 если ключ не ок)
+        return f"Код: {res.status_code}"
     except Exception as e:
+        # Если не работает, выведите саму ошибку для диагностики:
+        # return str(e) 
         return "Offline"
+
 
 # ---------------- STATE ----------------
 if 'active_field' not in st.session_state:
