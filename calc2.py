@@ -4,7 +4,6 @@ import time
 import requests
 import os
 from dotenv import load_dotenv
-from streamlit_js_eval import get_geolocation
 
 load_dotenv()
 
@@ -19,41 +18,40 @@ st.markdown("""
     flex-wrap: nowrap !important;
     gap: 5px !important;
 }
-[data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] > div {
-    width: 33% !important;
-    flex: 1 1 33% !important;
-    min-width: 0 !important;
-}
 .stButton > button {
     width: 100% !important;
     height: 50px !important;
     font-size: 20px !important;
 }
-.weather-text {
+/* Стиль для блока погоды */
+.weather-container {
     text-align: right;
-    font-size: 45px;
+    margin-bottom: 15px;
+}
+.weather-text {
+    font-size: 32px;
     font-weight: bold;
-    margin-bottom: -10px;
+    margin-bottom: -5px;
     line-height: 1;
 }
 .weather-sub {
-    text-align: right;
     font-size: 14px;
     color: gray;
     margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- WEATHER (WITH CACHE) ----------------
-@st.cache_data(ttl=600)  # Кэшируем погоду на 10 минут
+# ---------------- WEATHER FUNCTION ----------------
+@st.cache_data(ttl=600)
 def get_weather(city_name):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
-    if not raw_key:
-        return "No Key"
-
+    if not raw_key: return "No Key"
+    
     api_key = raw_key.strip()
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={api_key}&units=metric"
+    url = f"https://openweathermap.org{city_name}&appid={api_key}&units=metric"
 
     try:
         res = requests.get(url, timeout=5)
@@ -63,26 +61,9 @@ def get_weather(city_name):
             main = data['weather'][0]['main'].lower()
             icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
             return f"{temp}°C {icon}"
-        else:
-            return f"Err {res.status_code}"
+        return "N/A"
     except:
-        return "Conn Err"
-
-# ---------------- GEO ----------------
-geo = get_geolocation()
-lat, lon = None, None
-if geo and "coords" in geo:
-    lat = geo["coords"]["latitude"]
-    lon = geo["coords"]["longitude"]
-
-# ---------------- SIDEBAR SETTINGS ----------------
-st.sidebar.header("Settings")
-# Список доступных городов
-cities_list = ["Beersheba", "Tel Aviv", "Eilat"]
-selected_city = st.sidebar.selectbox("Select Location", cities_list)
-
-st.sidebar.write("---")
-st.sidebar.header("Parameters")
+        return "Offline"
 
 # ---------------- STATE ----------------
 if 'active_field' not in st.session_state:
@@ -123,12 +104,18 @@ with col_title:
     st.markdown("### Engineering Calculation")
 
 with col_weather:
-    # Вызываем погоду для выбранного в сайдбаре города
-    weather_data = get_weather(selected_city)
-    st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
-    st.markdown(f'<p class="weather-sub">{selected_city}</p>', unsafe_allow_html=True)
+    # Выводим три города подряд
+    for city in ["Beersheba", "Tel Aviv", "Eilat"]:
+        w_data = get_weather(city)
+        st.markdown(f"""
+            <div class="weather-container">
+                <p class="weather-text">{w_data}</p>
+                <p class="weather-sub">{city}</p>
+            </div>
+        """, unsafe_allow_html=True)
 
-# ---------------- SIDEBAR CONTROLS ----------------
+# ---------------- SIDEBAR ----------------
+st.sidebar.header("Parameters")
 c1, c2, c3 = st.sidebar.columns(3)
 if c1.button("D"): st.session_state.active_field = 'D'
 if c2.button("t"): st.session_state.active_field = 't'
@@ -141,13 +128,11 @@ def draw_f(label, val, f_id):
 draw_f("Diameter", st.session_state.D_val, 'D')
 draw_f("Thickness", st.session_state.t_val, 't')
 draw_f("Width", st.session_state.B_val, 'B')
-
 st.sidebar.write("---")
 
 # ---------------- KEYPAD ----------------
 k_cols = st.sidebar.columns(3)
 keys = ['1','2','3','4','5','6','7','8','9','.','0','C']
-
 for i, k in enumerate(keys):
     if k_cols[i % 3].button(k, use_container_width=True, key=f"k_{k}"):
         target = st.session_state.active_field + "_val"
@@ -159,14 +144,12 @@ calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=Tr
 
 # ---------------- TIMER ----------------
 timer_area = st.empty()
-
 @st.fragment(run_every=1)
 def run_timer():
     if st.session_state.start_ts:
         el = int(time.time() - st.session_state.start_ts)
         h, m, s = el // 3600, (el % 3600)//60, el % 60
         timer_area.markdown(f"⏱️ `{h:02d}:{m:02d}:{s:02d}`")
-
 run_timer()
 
 # ---------------- CALCULATION ----------------
@@ -175,26 +158,19 @@ if calc_btn:
         D = float(st.session_state.D_val.replace(',', '.'))
         t = float(st.session_state.t_val.replace(',', '.'))
         B = float(st.session_state.B_val.replace(',', '.'))
-
         st.session_state.start_ts = time.time()
 
-        Dm = D - t
-        Di = D - (2 * t)
+        Dm, Di = D - t, D - (2 * t)
         Ri = Di / 2
-
         x_in = max(min(B / (math.pi * Dm), 1), -1)
         x_out = max(min(B / (math.pi * Di), 1), -1)
-
-        a_in = math.degrees(math.asin(x_in))
-        a_out = math.degrees(math.asin(x_out))
+        a_in, a_out = math.degrees(math.asin(x_in)), math.degrees(math.asin(x_out))
 
         st.subheader("📐 Geometry & Setup")
         r1, r2 = st.columns(2)
-
         with r1:
             st.metric("ENTER ANGLE", f"{int(a_in)}° {int(round((a_in - int(a_in)) * 60))}'")
             st.metric("EXIT ANGLE", f"{int(a_out)}° {int(round((a_out - int(a_out)) * 60))}'")
-
         with r2:
             st.metric("Inner Radius", f"{Ri:.2f} mm")
             st.info(f"⚙️ SHIMS: {get_shims(t)}")
@@ -206,9 +182,8 @@ if calc_btn:
             wc1, wc2 = st.columns(2)
             wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
             wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
-
         st.success("100% Accuracy Confirmed")
-
     except:
         st.sidebar.error("❌ Enter all parameters!")
+
 
