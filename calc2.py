@@ -13,26 +13,22 @@ st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wi
 # ---------------- CSS ----------------
 st.markdown("""
 <style>
-
 [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     gap: 5px !important;
 }
-
 [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] > div {
     width: 33% !important;
     flex: 1 1 33% !important;
     min-width: 0 !important;
 }
-
 .stButton > button {
     width: 100% !important;
     height: 50px !important;
     font-size: 20px !important;
 }
-
 .weather-text {
     text-align: right;
     font-size: 45px;
@@ -40,28 +36,24 @@ st.markdown("""
     margin-bottom: -10px;
     line-height: 1;
 }
-
 .weather-sub {
     text-align: right;
     font-size: 14px;
     color: gray;
     margin: 0;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- WEATHER ----------------
-def get_weather():
+# ---------------- WEATHER (WITH CACHE) ----------------
+@st.cache_data(ttl=600)  # Кэшируем погоду на 10 минут
+def get_weather(city_name):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
     if not raw_key:
         return "No Key"
 
     api_key = raw_key.strip()
-    city = "Beersheba",
-    city = "Tel-Aviv"
-
-    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city_name}&appid={api_key}&units=metric"
 
     try:
         res = requests.get(url, timeout=5)
@@ -72,17 +64,25 @@ def get_weather():
             icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
             return f"{temp}°C {icon}"
         else:
-            return f"Error {res.status_code}"
+            return f"Err {res.status_code}"
     except:
-        return "Conn Error"
+        return "Conn Err"
 
 # ---------------- GEO ----------------
 geo = get_geolocation()
 lat, lon = None, None
-
 if geo and "coords" in geo:
     lat = geo["coords"]["latitude"]
     lon = geo["coords"]["longitude"]
+
+# ---------------- SIDEBAR SETTINGS ----------------
+st.sidebar.header("Settings")
+# Список доступных городов
+cities_list = ["Beersheba", "Tel Aviv", "Eilat"]
+selected_city = st.sidebar.selectbox("Select Location", cities_list)
+
+st.sidebar.write("---")
+st.sidebar.header("Parameters")
 
 # ---------------- STATE ----------------
 if 'active_field' not in st.session_state:
@@ -97,14 +97,10 @@ if 'start_ts' not in st.session_state:
 
 # ---------------- ENGINEERING ----------------
 def get_shims(t):
-    if t in [4.7625, 6.35, 7.9375]:
-        return "4.5 mm"
-    elif t in [9.525, 11.1125, 12.7]:
-        return "5.0 mm"
-    elif t >= 15.875:
-        return "5.5 mm"
+    if t in [4.7625, 6.35, 7.9375]: return "4.5 mm"
+    elif t in [9.525, 11.1125, 12.7]: return "5.0 mm"
+    elif t >= 15.875: return "5.5 mm"
     return "Not defined"
-
 
 WELDING_TABLE = [
     {"t": 4.7625, "speed": 1.5, "ac_in": ".....", "dc_in": "500A/28V", "ac_out": "400A/34V", "dc_out": "580A/30V"},
@@ -127,13 +123,12 @@ with col_title:
     st.markdown("### Engineering Calculation")
 
 with col_weather:
-    weather_data = get_weather()
+    # Вызываем погоду для выбранного в сайдбаре города
+    weather_data = get_weather(selected_city)
     st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
-    st.markdown('<p class="weather-sub">Be\'er Sheva</p>', unsafe_allow_html=True)
+    st.markdown(f'<p class="weather-sub">{selected_city}</p>', unsafe_allow_html=True)
 
-# ---------------- SIDEBAR ----------------
-st.sidebar.header("Parameters")
-
+# ---------------- SIDEBAR CONTROLS ----------------
 c1, c2, c3 = st.sidebar.columns(3)
 if c1.button("D"): st.session_state.active_field = 'D'
 if c2.button("t"): st.session_state.active_field = 't'
@@ -156,10 +151,8 @@ keys = ['1','2','3','4','5','6','7','8','9','.','0','C']
 for i, k in enumerate(keys):
     if k_cols[i % 3].button(k, use_container_width=True, key=f"k_{k}"):
         target = st.session_state.active_field + "_val"
-        if k == "C":
-            st.session_state[target] = ""
-        else:
-            st.session_state[target] += k
+        if k == "C": st.session_state[target] = ""
+        else: st.session_state[target] += k
         st.rerun()
 
 calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=True)
@@ -176,7 +169,7 @@ def run_timer():
 
 run_timer()
 
-# ---------------- CALCULATION (FIXED TO YOUR ORIGINAL) ----------------
+# ---------------- CALCULATION ----------------
 if calc_btn:
     try:
         D = float(st.session_state.D_val.replace(',', '.'))
@@ -189,18 +182,13 @@ if calc_btn:
         Di = D - (2 * t)
         Ri = Di / 2
 
-        # защита от asin domain error
-        x_in = B / (math.pi * Dm)
-        x_out = B / (math.pi * Di)
-
-        x_in = max(min(x_in, 1), -1)
-        x_out = max(min(x_out, 1), -1)
+        x_in = max(min(B / (math.pi * Dm), 1), -1)
+        x_out = max(min(B / (math.pi * Di), 1), -1)
 
         a_in = math.degrees(math.asin(x_in))
         a_out = math.degrees(math.asin(x_out))
 
         st.subheader("📐 Geometry & Setup")
-
         r1, r2 = st.columns(2)
 
         with r1:
@@ -220,7 +208,7 @@ if calc_btn:
             wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
 
         st.success("100% Accuracy Confirmed")
-        st.rerun()
 
     except:
         st.sidebar.error("❌ Enter all parameters!")
+
