@@ -45,31 +45,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- WEATHER FUNCTION ----------------
-@st.cache_data(ttl=600)
-def get_weather(city):
+def get_weather(city): # Добавляем аргумент city
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
     if not raw_key:
         return "No Key"
 
     api_key = raw_key.strip()
-    url = f"https://openweathermap.org{city}&appid={api_key}&units=metric"
+    # Используем переменную city в URL
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
 
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json()
             temp = int(data['main']['temp'])
-            # Исправляем обращение к списку [0]
             main = data['weather'][0]['main'].lower()
-            
-            # Логика иконок (чтобы не было ложных дождей)
-            if "clear" in main: icon = "☀️"
-            elif "cloud" in main: icon = "☁️"
-            elif "rain" in main or "drizzle" in main: icon = "🌧️"
-            else: icon = "⛅" # Для тумана/песка
-            
+            icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
             return f"{temp}°C {icon}"
-        return f"Error {res.status_code}"
+        else:
+            return f"Error {res.status_code}"
     except:
         return "Conn Error"
 
@@ -192,5 +186,4 @@ if calc_btn:
         st.success("100% Accuracy Confirmed")
     except:
         st.sidebar.error("❌ Enter all parameters!")
-
 
