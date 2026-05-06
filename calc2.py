@@ -45,13 +45,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- WEATHER FUNCTION ----------------
-def get_weather(city): # Добавляем аргумент city
+@st.cache_data(ttl=600) # 1. Кэшируем на 10 минут, чтобы не было "лжи" при обновлении страницы
+def get_weather(city):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
-    if not raw_key:
-        return "No Key"
+    if not raw_key: return "No Key"
 
     api_key = raw_key.strip()
-    # Используем переменную city в URL
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
 
     try:
@@ -60,12 +59,22 @@ def get_weather(city): # Добавляем аргумент city
             data = res.json()
             temp = int(data['main']['temp'])
             main = data['weather'][0]['main'].lower()
-            icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
+            
+            # 2. Улучшаем логику иконок (теперь дождь не будет дефолтным)
+            if "clear" in main:
+                icon = "☀️"
+            elif "cloud" in main:
+                icon = "☁️"
+            elif "rain" in main or "drizzle" in main:
+                icon = "🌧️"
+            else:
+                icon = "⛅" # Если туман, пыль или что-то еще — будет солнце за тучей
+                
             return f"{temp}°C {icon}"
-        else:
-            return f"Error {res.status_code}"
+        return f"Err {res.status_code}"
     except:
-        return "Conn Error"
+        return "Offline"
+
 
 # ---------------- STATE ----------------
 if 'active_field' not in st.session_state:
