@@ -45,6 +45,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- WEATHER FUNCTION ----------------
+@st.cache_data(ttl=600)
 def get_weather(city): # Добавляем аргумент city
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
     if not raw_key:
