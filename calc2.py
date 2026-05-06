@@ -58,7 +58,11 @@ def get_weather():
         return "No Key"
 
     api_key = raw_key.strip()
-    city = "Beersheba"
+    CITIES = {
+    "Beersheba": "Beersheba",
+    "Tel Aviv": "Tel Aviv",
+    "Eilat": "Eilat"
+}
 
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
 
