@@ -45,31 +45,27 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- WEATHER FUNCTION ----------------
-@st.cache_data(ttl=600)
-def get_weather(city_name):
+def get_weather(city): # Добавляем аргумент city
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
-    if not raw_key: return "No Key"
-    
+    if not raw_key:
+        return "No Key"
+
     api_key = raw_key.strip()
-    # Правильный URL для API
-    url = f"https://openweathermap.org{city_name}&appid={api_key}&units=metric"
+    # Используем переменную city в URL
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
 
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json()
             temp = int(data['main']['temp'])
-            # ВАЖНО: weather — это список, берем первый элемент [0]
-            main_condition = data['weather'][0]['main'].lower()
-            
-            icon = "☀️" if "clear" in main_condition else "☁️" if "cloud" in main_condition else "🌧️"
+            main = data['weather'][0]['main'].lower()
+            icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
             return f"{temp}°C {icon}"
-        return f"Код: {res.status_code}"
-    except Exception as e:
-        # Если не работает, выведите саму ошибку для диагностики:
-        # return str(e) 
-        return "Offline"
-
+        else:
+            return f"Error {res.status_code}"
+    except:
+        return "Conn Error"
 
 # ---------------- STATE ----------------
 if 'active_field' not in st.session_state:
@@ -110,15 +106,14 @@ with col_title:
     st.markdown("### Engineering Calculation")
 
 with col_weather:
-    # Выводим три города подряд
-    for city in ["Beersheba", "Tel Aviv", "Eilat"]:
-        w_data = get_weather(city)
-        st.markdown(f"""
-            <div class="weather-container">
-                <p class="weather-text">{w_data}</p>
-                <p class="weather-sub">{city}</p>
-            </div>
-        """, unsafe_allow_html=True)
+    cities = ["Beersheba", "Tel Aviv", "Eilat"]
+    for city in cities:
+        weather_data = get_weather(city)
+        # Выводим данные
+        st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
+        # Выводим подпись города
+        st.markdown(f'<p class="weather-sub">{city}</p>', unsafe_allow_html=True)
+
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("Parameters")
