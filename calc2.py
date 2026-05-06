@@ -58,7 +58,7 @@ def get_weather():
         return "No Key"
 
     api_key = raw_key.strip()
-    CITIES = {
+    city = {
     "Beersheba": "Beersheba",
     "Tel Aviv": "Tel Aviv",
     "Eilat": "Eilat"
