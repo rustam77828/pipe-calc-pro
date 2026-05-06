@@ -59,10 +59,11 @@ def get_weather(city_name):
             data = res.json()
             temp = int(data['main']['temp'])
             main = data['weather'][0]['main'].lower()
+            # Простая логика иконок
             icon = "☀️" if "clear" in main else "☁️" if "cloud" in main else "🌧️"
             return f"{temp}°C {icon}"
-        return "N/A"
-    except:
+        return f"Err {res.status_code}" # Вернет код ошибки (например, 401 если ключ не ок)
+    except Exception as e:
         return "Offline"
 
 # ---------------- STATE ----------------
