@@ -12,16 +12,26 @@ st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wi
 # ---------------- CSS ----------------
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    gap: 5px !important;
-}
+/* Базовый стиль для кнопок (ПК) */
 .stButton > button {
     width: 100% !important;
     height: 50px !important;
     font-size: 20px !important;
+}
+
+/* Адаптация под мобильные устройства */
+@media (max-width: 480px) {
+    .stButton > button {
+        height: 40px !important; /* Уменьшаем высоту на телефоне */
+        font-size: 16px !important; /* Уменьшаем шрифт, чтобы цифры влезали */
+    }
+    
+    /* Делаем блок с цифрами компактнее на мобилках */
+    [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] {
+        gap: 2px !important;
+    }
+}
+
 }
 /* Стиль для блока погоды */
 .weather-container {
