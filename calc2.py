@@ -1,4 +1,4 @@
-import streamlit as st
+0import streamlit as st
 import math
 import time
 import requests
@@ -34,7 +34,7 @@ def get_weather():
 
     # 2. Правильная ссылка для OpenWeather
     # 2. ПРАВИЛЬНАЯ ссылка для OpenWeather
-    url = f"https://openweathermap.org{city}&appid={api_key}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
 
 
     try:
