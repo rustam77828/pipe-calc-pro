@@ -51,7 +51,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # ---------------- WEATHER FUNCTION ----------------
 @st.cache_data(ttl=600)  # Кэшируем на 10 минут
 def get_weather(city):
@@ -66,24 +65,29 @@ def get_weather(city):
         if res.status_code == 200:
             data = res.json()
             temp = int(data['main']['temp'])
-            hum = data['main']['humidity']  # ДОБАВЛЕНО: получаем влажность
+            hum = data['main']['humidity']
             main = data['weather'][0]['main'].lower()
 
+            # Логика определения времени суток
+            current_time = data['dt']
+            sunrise = data['sys']['sunrise']
+            sunset = data['sys']['sunset']
+            is_night = current_time < sunrise or current_time > sunset
+
+            # Выбор иконки
             if "clear" in main:
-                icon = "☀️"
+                icon = "🌙" if is_night else "☀️"
             elif "cloud" in main:
                 icon = "☁️"
             elif "rain" in main or "drizzle" in main:
                 icon = "🌧️"
             else:
-                icon = "⛅"
+                icon = "☁️" if is_night else "⛅"
 
-            # ДОБАВЛЕНО: возвращаем температуру, иконку и влажность
             return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}%</span>"
         return f"Err {res.status_code}"
     except:
         return "Offline"
-
 
 # ---------------- STATE ----------------
 if 'active_field' not in st.session_state:
