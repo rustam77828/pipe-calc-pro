@@ -188,8 +188,23 @@ timer_area = st.empty()
 def run_timer():
     if st.session_state.start_ts:
         el = int(time.time() - st.session_state.start_ts)
-        h, m, s = el // 3600, (el % 3600) // 60, el % 60
-        timer_area.markdown(f"⏱️ `{h:02d}:{m:02d}:{s:02d}`")
+
+        # Расчет единиц
+        months = el // (30 * 86400)  # Месяцы (условно 30 дней)
+        days = (el % (30 * 86400)) // 86400
+        hours = (el % 86400) // 3600
+        minutes = (el % 3600) // 60
+        seconds = el % 60
+
+        # Формируем строку вывода
+        if months > 0:
+            ts_str = f"{months}mo {days}d {hours:02d}:{minutes:02d}:{seconds:02d}"
+        elif days > 0:
+            ts_str = f"{days}d {hours:02d}:{minutes:02d}:{seconds:02d}"
+        else:
+            ts_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        timer_area.markdown(f"⏱️ `{ts_str}`")
 
 
 run_timer()
