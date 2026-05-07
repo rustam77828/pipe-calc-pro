@@ -90,8 +90,12 @@ def get_weather(city):
         return f"Err {res.status_code}"
     except:
         return "Offline"
-
 # ---------------- STATE ----------------
+# Проверяем, есть ли время в ссылке, если страница "проснулась"
+if "start" in st.query_params and 'start_ts' not in st.session_state:
+    st.session_state.start_ts = float(st.query_params["start"])
+
+
 if 'active_field' not in st.session_state:
     st.session_state.active_field = 'D'
 
@@ -193,6 +197,9 @@ run_timer()
 # ---------------- CALCULATION ----------------
 if calc_btn:
     try:
+        new_start = time.time()
+        st.query_params["start"] = str(new_start)
+
         D = float(st.session_state.D_val.replace(',', '.'))
         t = float(st.session_state.t_val.replace(',', '.'))
         B = float(st.session_state.B_val.replace(',', '.'))
