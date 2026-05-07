@@ -66,7 +66,8 @@ def get_weather(city):
             data = res.json()
             temp = int(data['main']['temp'])
             hum = data['main']['humidity']
-            wind = data['wind']['speed']
+            wind_kmh = round(data['wind']['speed'] * 3.6, 1)
+
             main = data['weather'][0]['main'].lower()
 
             # Логика определения времени суток
@@ -85,7 +86,7 @@ def get_weather(city):
             else:
                 icon = "☁️" if is_night else "⛅"
 
-            return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}% | 💨{wind}m/s</span>"
+            return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}% | 💨{wind_kmh}km/h</span>"
         return f"Err {res.status_code}"
     except:
         return "Offline"
@@ -222,4 +223,3 @@ if calc_btn:
         st.success("100% Accuracy Confirmed")
     except:
         st.sidebar.error("❌ Enter all parameters!")
-
