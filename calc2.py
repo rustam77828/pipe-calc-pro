@@ -33,7 +33,7 @@ st.markdown("""
 }
 
 .weather-text {
-    text-align: right;
+    text-align: left;
     font-size: 45px;
     font-weight: bold;
     margin-bottom: -10px;
@@ -41,17 +41,19 @@ st.markdown("""
 }
 
 .weather-sub {
-    text-align: right;
+    text-align: left;
     font-size: 14px;
     color: gray;
     margin: 0;
+    padding-left: 5px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
+
 # ---------------- WEATHER FUNCTION ----------------
-@st.cache_data(ttl=600) # 1. Кэшируем на 10 минут, чтобы не было "лжи" при обновлении страницы
+@st.cache_data(ttl=600)  # Кэшируем на 10 минут
 def get_weather(city):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
     if not raw_key: return "No Key"
@@ -64,9 +66,9 @@ def get_weather(city):
         if res.status_code == 200:
             data = res.json()
             temp = int(data['main']['temp'])
+            hum = data['main']['humidity']  # ДОБАВЛЕНО: получаем влажность
             main = data['weather'][0]['main'].lower()
-            
-            # 2. Улучшаем логику иконок (теперь дождь не будет дефолтным)
+
             if "clear" in main:
                 icon = "☀️"
             elif "cloud" in main:
@@ -74,9 +76,10 @@ def get_weather(city):
             elif "rain" in main or "drizzle" in main:
                 icon = "🌧️"
             else:
-                icon = "⛅" # Если туман, пыль или что-то еще — будет солнце за тучей
-                
-            return f"{temp}°C {icon}"
+                icon = "⛅"
+
+            # ДОБАВЛЕНО: возвращаем температуру, иконку и влажность
+            return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}%</span>"
         return f"Err {res.status_code}"
     except:
         return "Offline"
@@ -93,12 +96,17 @@ for f in ['D_val', 't_val', 'B_val']:
 if 'start_ts' not in st.session_state:
     st.session_state.start_ts = None
 
+
 # ---------------- ENGINEERING ----------------
 def get_shims(t):
-    if t in [4.7625, 6.35, 7.9375]: return "4.5 mm"
-    elif t in [9.525, 11.1125, 12.7]: return "5.0 mm"
-    elif t >= 15.875: return "5.5 mm"
+    if t in [4.7625, 6.35, 7.9375]:
+        return "4.5 mm"
+    elif t in [9.525, 11.1125, 12.7]:
+        return "5.0 mm"
+    elif t >= 15.875:
+        return "5.5 mm"
     return "Not defined"
+
 
 WELDING_TABLE = [
     {"t": 4.7625, "speed": 1.5, "ac_in": ".....", "dc_in": "500A/28V", "ac_out": "400A/34V", "dc_out": "580A/30V"},
@@ -107,14 +115,15 @@ WELDING_TABLE = [
     {"t": 9.525, "speed": 2.0, "ac_in": "480A/32V", "dc_in": "990A/31V", "ac_out": "450A/33V", "dc_out": "970A/31V"},
     {"t": 11.1125, "speed": 1.9, "ac_in": "510A/32V", "dc_in": "950A/31V", "ac_out": "450A/32V", "dc_out": "1000A/30V"},
     {"t": 12.7, "speed": 1.9, "ac_in": "550A/32V", "dc_in": "980A/32V", "ac_out": "450A/32.5V", "dc_out": "1100A/30V"},
-    {"t": 15.875, "speed": 1.2, "ac_in": "540A/33V", "dc_in": "1000A/30V", "ac_out": "520A/33.5V", "dc_out": "1100A/31V"},
+    {"t": 15.875, "speed": 1.2, "ac_in": "540A/33V", "dc_in": "1000A/30V", "ac_out": "520A/33.5V",
+     "dc_out": "1100A/31V"},
     {"t": 17.78, "speed": 1.2, "ac_in": "520A/34V", "dc_in": "1100A/31V", "ac_out": "520A/34V", "dc_out": "1200A/33V"},
     {"t": 19.05, "speed": 1.1, "ac_in": "520A/34V", "dc_in": "1150A/32V", "ac_out": "520A/32V", "dc_out": "1200A/31V"},
     {"t": 25.4, "speed": 1.1, "ac_in": "550A/34V", "dc_in": "1250A/32V", "ac_out": "550A/32V", "dc_out": "1300A/31V"}
 ]
 
 # ---------------- HEADER ----------------
-col_title, col_weather = st.columns([2, 1])
+col_title, col_weather = st.columns([1.5, 1])
 
 with col_title:
     st.title("⚙️ Production Setup Card")
@@ -129,7 +138,6 @@ with col_weather:
         # Выводим подпись города
         st.markdown(f'<p class="weather-sub">{city}</p>', unsafe_allow_html=True)
 
-
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("Parameters")
 c1, c2, c3 = st.sidebar.columns(3)
@@ -137,9 +145,11 @@ if c1.button("D"): st.session_state.active_field = 'D'
 if c2.button("t"): st.session_state.active_field = 't'
 if c3.button("B"): st.session_state.active_field = 'B'
 
+
 def draw_f(label, val, f_id):
     st.sidebar.markdown(f"{'🔴' if st.session_state.active_field == f_id else '⚪'} {label}")
     st.sidebar.code(val if val else "0")
+
 
 draw_f("Diameter", st.session_state.D_val, 'D')
 draw_f("Thickness", st.session_state.t_val, 't')
@@ -148,24 +158,30 @@ st.sidebar.write("---")
 
 # ---------------- KEYPAD ----------------
 k_cols = st.sidebar.columns(3)
-keys = ['1','2','3','4','5','6','7','8','9','.','0','C']
+keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'C']
 for i, k in enumerate(keys):
     if k_cols[i % 3].button(k, use_container_width=True, key=f"k_{k}"):
         target = st.session_state.active_field + "_val"
-        if k == "C": st.session_state[target] = ""
-        else: st.session_state[target] += k
+        if k == "C":
+            st.session_state[target] = ""
+        else:
+            st.session_state[target] += k
         st.rerun()
 
 calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=True)
 
 # ---------------- TIMER ----------------
 timer_area = st.empty()
+
+
 @st.fragment(run_every=1)
 def run_timer():
     if st.session_state.start_ts:
         el = int(time.time() - st.session_state.start_ts)
-        h, m, s = el // 3600, (el % 3600)//60, el % 60
+        h, m, s = el // 3600, (el % 3600) // 60, el % 60
         timer_area.markdown(f"⏱️ `{h:02d}:{m:02d}:{s:02d}`")
+
+
 run_timer()
 
 # ---------------- CALCULATION ----------------
