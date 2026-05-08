@@ -66,7 +66,7 @@ def get_weather(city):
             data = res.json()
             temp = int(data['main']['temp'])
             hum = data['main']['humidity']
-            wind_kmh = round(data['wind']['speed'] * 3.6, 1)
+            wind_kmh = round(data['wind']['speed'] * 3.6)
 
             main = data['weather'][0]['main'].lower()
 
@@ -86,7 +86,7 @@ def get_weather(city):
             else:
                 icon = "☁️" if is_night else "⛅"
 
-            return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}% | 💨{wind_kmh}km/h</span>"
+            return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}% | 💨 {wind_kmh} km/h</span>"
         return f"Err {res.status_code}"
     except:
         return "Offline"
