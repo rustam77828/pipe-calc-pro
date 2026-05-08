@@ -67,7 +67,8 @@ def get_weather(city):
             data = res.json()
             temp = int(data['main']['temp'])
             hum = data['main']['humidity']
-            wind_kmh = round(data['wind']['speed'] * 3.6)
+            # Было: wind_kmh = round(data['wind']['speed'] * 3.6)
+            wind_kmh = math.floor(data['wind']['speed'] * 3.6)
 
             main = data['weather'][0]['main'].lower()
 
