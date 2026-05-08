@@ -148,6 +148,12 @@ with col_weather:
         # Выводим подпись города
         st.markdown(f'<p class="weather-sub">{city}</p>', unsafe_allow_html=True)
 
+    st.markdown("""
+        <div style="text-align: right; margin-top: 20px; font-size: 10px; color: gray;">
+            Source: <a href="https://openweathermap.org" target="_blank" style="color: gray; text-decoration: none;">OpenWeatherMap.org</a>
+        </div>
+    """, unsafe_allow_html=True)
+
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("Parameters")
 c1, c2, c3 = st.sidebar.columns(3)
