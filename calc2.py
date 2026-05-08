@@ -65,9 +65,8 @@ def get_weather(city):
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json()
-            temp = int(data['main']['temp'])
-            hum = data['main']['humidity']
-            # Было: wind_kmh = round(data['wind']['speed'] * 3.6)
+            temp = math.ceil(data['main']['temp'])
+            hum = math.floor(data['main']['humidity'])
             wind_kmh = math.floor(data['wind']['speed'] * 3.6)
 
             main = data['weather'][0]['main'].lower()
@@ -253,5 +252,5 @@ if calc_btn:
                 wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
                 wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
             st.success("✅ 100% Accuracy Confirmed")
-    except:
-        st.sidebar.error("❌ Enter all parameters!")
+    except Exception as e:
+        st.sidebar.error(f"❌ Error: {e}")
