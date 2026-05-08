@@ -51,6 +51,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
 # ---------------- WEATHER FUNCTION ----------------
 @st.cache_data(ttl=600)
 def get_weather(city):
@@ -89,6 +90,7 @@ def get_weather(city):
     except:
         return "Offline"
 
+
 # ---------------- STATE ----------------
 if "start" in st.query_params and 'start_ts' not in st.session_state:
     st.session_state.start_ts = float(st.query_params["start"])
@@ -103,6 +105,7 @@ for f in ['D_val', 't_val', 'B_val']:
 if 'start_ts' not in st.session_state:
     st.session_state.start_ts = None
 
+
 # ---------------- ENGINEERING ----------------
 def get_shims(t):
     if t in [4.7625, 6.35, 7.9375]:
@@ -113,14 +116,6 @@ def get_shims(t):
         return "5.5 mm"
     return "Not defined"
 
-# ---------------- ANGLE STATUS ----------------
-def get_angle_status(angle):
-    limit_min = 7.0
-    limit_max = 40.0 + (8 / 60)  # 40°08'
-    if limit_min <= angle <= limit_max:
-        return "ok"
-    else:
-        return "out"
 
 WELDING_TABLE = [
     {"t": 4.7625, "speed": 1.5, "ac_in": ".....", "dc_in": "500A/28V", "ac_out": "400A/34V", "dc_out": "580A/30V"},
@@ -129,7 +124,8 @@ WELDING_TABLE = [
     {"t": 9.525, "speed": 2.0, "ac_in": "480A/32V", "dc_in": "990A/31V", "ac_out": "450A/33V", "dc_out": "970A/31V"},
     {"t": 11.1125, "speed": 1.9, "ac_in": "510A/32V", "dc_in": "950A/31V", "ac_out": "450A/32V", "dc_out": "1000A/30V"},
     {"t": 12.7, "speed": 1.9, "ac_in": "550A/32V", "dc_in": "980A/32V", "ac_out": "450A/32.5V", "dc_out": "1100A/30V"},
-    {"t": 15.875, "speed": 1.2, "ac_in": "540A/33V", "dc_in": "1000A/30V", "ac_out": "520A/33.5V", "dc_out": "1100A/31V"},
+    {"t": 15.875, "speed": 1.2, "ac_in": "540A/33V", "dc_in": "1000A/30V", "ac_out": "520A/33.5V",
+     "dc_out": "1100A/31V"},
     {"t": 17.78, "speed": 1.2, "ac_in": "520A/34V", "dc_in": "1100A/31V", "ac_out": "520A/34V", "dc_out": "1200A/33V"},
     {"t": 19.05, "speed": 1.1, "ac_in": "520A/34V", "dc_in": "1150A/32V", "ac_out": "520A/32V", "dc_out": "1200A/31V"},
     {"t": 25.4, "speed": 1.1, "ac_in": "550A/34V", "dc_in": "1250A/32V", "ac_out": "550A/32V", "dc_out": "1300A/31V"}
@@ -213,8 +209,6 @@ def run_timer():
 
 
 run_timer()
-
-# ---------------- CALCULATION ----------------
 # ---------------- CALCULATION ----------------
 if calc_btn:
     try:
