@@ -214,11 +214,11 @@ if calc_btn:
     try:
         new_start = time.time()
         st.query_params["start"] = str(new_start)
+        st.session_state.start_ts = new_start  # используем уже созданное
 
-        D = float(st.session_state.D_val.replace(',', '.'))
-        t = float(st.session_state.t_val.replace(',', '.'))
-        B = float(st.session_state.B_val.replace(',', '.'))
-        st.session_state.start_ts = time.time()
+        D = float(st.session_state.D_val)
+        t = float(st.session_state.t_val)
+        B = float(st.session_state.B_val)
 
         Dm, Di = D - t, D - (2 * t)
         Ri = Di / 2
