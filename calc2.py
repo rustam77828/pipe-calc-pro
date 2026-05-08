@@ -52,7 +52,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------- WEATHER FUNCTION ----------------
-@st.cache_data(ttl=600)  # Кэшируем на 10 минут
+@st.cache_data(ttl=600)
 def get_weather(city):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
     if not raw_key: return "No Key"
@@ -70,13 +70,11 @@ def get_weather(city):
 
             main = data['weather'][0]['main'].lower()
 
-            # Логика определения времени суток
             current_time = data['dt']
             sunrise = data['sys']['sunrise']
             sunset = data['sys']['sunset']
             is_night = current_time < sunrise or current_time > sunset
 
-            # Выбор иконки
             if "clear" in main:
                 icon = "🌙" if is_night else "☀️"
             elif "cloud" in main:
@@ -90,11 +88,10 @@ def get_weather(city):
         return f"Err {res.status_code}"
     except:
         return "Offline"
+
 # ---------------- STATE ----------------
-# Проверяем, есть ли время в ссылке, если страница "проснулась"
 if "start" in st.query_params and 'start_ts' not in st.session_state:
     st.session_state.start_ts = float(st.query_params["start"])
-
 
 if 'active_field' not in st.session_state:
     st.session_state.active_field = 'D'
@@ -106,7 +103,6 @@ for f in ['D_val', 't_val', 'B_val']:
 if 'start_ts' not in st.session_state:
     st.session_state.start_ts = None
 
-
 # ---------------- ENGINEERING ----------------
 def get_shims(t):
     if t in [4.7625, 6.35, 7.9375]:
@@ -117,6 +113,14 @@ def get_shims(t):
         return "5.5 mm"
     return "Not defined"
 
+# ---------------- ANGLE STATUS ----------------
+def get_angle_status(angle):
+    limit_min = 7.0
+    limit_max = 40.0 + (8 / 60)  # 40°08'
+    if limit_min <= angle <= limit_max:
+        return "ok"
+    else:
+        return "out"
 
 WELDING_TABLE = [
     {"t": 4.7625, "speed": 1.5, "ac_in": ".....", "dc_in": "500A/28V", "ac_out": "400A/34V", "dc_out": "580A/30V"},
@@ -125,8 +129,7 @@ WELDING_TABLE = [
     {"t": 9.525, "speed": 2.0, "ac_in": "480A/32V", "dc_in": "990A/31V", "ac_out": "450A/33V", "dc_out": "970A/31V"},
     {"t": 11.1125, "speed": 1.9, "ac_in": "510A/32V", "dc_in": "950A/31V", "ac_out": "450A/32V", "dc_out": "1000A/30V"},
     {"t": 12.7, "speed": 1.9, "ac_in": "550A/32V", "dc_in": "980A/32V", "ac_out": "450A/32.5V", "dc_out": "1100A/30V"},
-    {"t": 15.875, "speed": 1.2, "ac_in": "540A/33V", "dc_in": "1000A/30V", "ac_out": "520A/33.5V",
-     "dc_out": "1100A/31V"},
+    {"t": 15.875, "speed": 1.2, "ac_in": "540A/33V", "dc_in": "1000A/30V", "ac_out": "520A/33.5V", "dc_out": "1100A/31V"},
     {"t": 17.78, "speed": 1.2, "ac_in": "520A/34V", "dc_in": "1100A/31V", "ac_out": "520A/34V", "dc_out": "1200A/33V"},
     {"t": 19.05, "speed": 1.1, "ac_in": "520A/34V", "dc_in": "1150A/32V", "ac_out": "520A/32V", "dc_out": "1200A/31V"},
     {"t": 25.4, "speed": 1.1, "ac_in": "550A/34V", "dc_in": "1250A/32V", "ac_out": "550A/32V", "dc_out": "1300A/31V"}
@@ -143,9 +146,7 @@ with col_weather:
     cities = ["Beersheba", "Tel Aviv", "Eilat"]
     for city in cities:
         weather_data = get_weather(city)
-        # Выводим данные
         st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
-        # Выводим подпись города
         st.markdown(f'<p class="weather-sub">{city}</p>', unsafe_allow_html=True)
 
     st.markdown("""
@@ -195,14 +196,12 @@ def run_timer():
     if st.session_state.start_ts:
         el = int(time.time() - st.session_state.start_ts)
 
-        # Расчет единиц
-        months = el // (30 * 86400)  # Месяцы (условно 30 дней)
+        months = el // (30 * 86400)
         days = (el % (30 * 86400)) // 86400
         hours = (el % 86400) // 3600
         minutes = (el % 3600) // 60
         seconds = el % 60
 
-        # Формируем строку вывода
         if months > 0:
             ts_str = f"{months}mo {days}d {hours:02d}:{minutes:02d}:{seconds:02d}"
         elif days > 0:
@@ -215,6 +214,7 @@ def run_timer():
 
 run_timer()
 
+# ---------------- CALCULATION ----------------
 # ---------------- CALCULATION ----------------
 if calc_btn:
     try:
@@ -232,22 +232,31 @@ if calc_btn:
         x_out = max(min(B / (math.pi * Di), 1), -1)
         a_in, a_out = math.degrees(math.asin(x_in)), math.degrees(math.asin(x_out))
 
-        st.subheader("📐 Geometry & Setup")
-        r1, r2 = st.columns(2)
-        with r1:
-            st.metric("ENTER ANGLE", f"{int(a_in)}° {int(round((a_in - int(a_in)) * 60))}'")
-            st.metric("EXIT ANGLE", f"{int(a_out)}° {int(round((a_out - int(a_out)) * 60))}'")
-        with r2:
-            st.metric("Inner Radius", f"{Ri:.2f} mm")
-            st.info(f"⚙️ SHIMS: {get_shims(t)}")
+        limit_min = 7.0
+        limit_max = 40.0 + (8 / 60)
 
-        w = next((r for r in WELDING_TABLE if abs(r["t"] - t) < 0.01), None)
-        if w:
-            st.divider()
-            st.subheader(f"🔥 Welding: {w['speed']} m/min+-0.2")
-            wc1, wc2 = st.columns(2)
-            wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
-            wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
-        st.success("100% Accuracy Confirmed")
+        in_ok = limit_min <= a_in <= limit_max
+        out_ok = limit_min <= a_out <= limit_max
+
+        if not in_ok or not out_ok:
+            st.error("⛔ Angles are out of range. Please recalculate with different parameters.")
+        else:
+            st.subheader("📐 Geometry & Setup")
+            r1, r2 = st.columns(2)
+            with r1:
+                st.metric("ENTER ANGLE", f"{int(a_in)}° {int(round((a_in - int(a_in)) * 60))}'")
+                st.metric("EXIT ANGLE", f"{int(a_out)}° {int(round((a_out - int(a_out)) * 60))}'")
+            with r2:
+                st.metric("Inner Radius", f"{Ri:.2f} mm")
+                st.info(f"⚙️ SHIMS: {get_shims(t)}")
+
+            w = next((r for r in WELDING_TABLE if abs(r["t"] - t) < 0.01), None)
+            if w:
+                st.divider()
+                st.subheader(f"🔥 Welding: {w['speed']} m/min+-0.2")
+                wc1, wc2 = st.columns(2)
+                wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
+                wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
+            st.success("✅ 100% Accuracy Confirmed")
     except:
         st.sidebar.error("❌ Enter all parameters!")
