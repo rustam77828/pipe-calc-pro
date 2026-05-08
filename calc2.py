@@ -4,13 +4,12 @@ import time
 import requests
 import os
 from dotenv import load_dotenv
-import gc  # Добавлено: для сборки мусора
 
 load_dotenv()
 
 st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wide")
 
-# ---------------- CSS (БЕЗ ИЗМЕНЕНИЙ) ----------------
+# ---------------- CSS ----------------
 st.markdown("""
 <style>
 
@@ -53,8 +52,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ---------------- WEATHER FUNCTION (ОПТИМИЗИРОВАНА) ----------------
-@st.cache_data(ttl=600, show_spinner=False)  # Добавлено show_spinner=False
+# ---------------- WEATHER FUNCTION ----------------
+@st.cache_data(ttl=600)
 def get_weather(city):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
     if not raw_key: return "No Key"
@@ -92,8 +91,10 @@ def get_weather(city):
         return "Offline"
 
 
-# ---------------- STATE (ОПТИМИЗИРОВАН) ----------------
-# Оптимизация: объединены проверки
+# ---------------- STATE ----------------
+if "start" in st.query_params and 'start_ts' not in st.session_state:
+    st.session_state.start_ts = float(st.query_params["start"])
+
 if 'active_field' not in st.session_state:
     st.session_state.active_field = 'D'
 
@@ -104,12 +105,8 @@ for f in ['D_val', 't_val', 'B_val']:
 if 'start_ts' not in st.session_state:
     st.session_state.start_ts = None
 
-# Оптимизация: проверка query params после инициализации
-if "start" in st.query_params and st.session_state.start_ts is None:
-    st.session_state.start_ts = float(st.query_params["start"])
 
-
-# ---------------- ENGINEERING (БЕЗ ИЗМЕНЕНИЙ) ----------------
+# ---------------- ENGINEERING ----------------
 def get_shims(t):
     if t in [4.7625, 6.35, 7.9375]:
         return "4.5 mm"
@@ -134,7 +131,7 @@ WELDING_TABLE = [
     {"t": 25.4, "speed": 1.1, "ac_in": "550A/34V", "dc_in": "1250A/32V", "ac_out": "550A/32V", "dc_out": "1300A/31V"}
 ]
 
-# ---------------- HEADER (БЕЗ ИЗМЕНЕНИЙ) ----------------
+# ---------------- HEADER ----------------
 col_title, col_weather = st.columns([1.5, 1])
 
 with col_title:
@@ -154,7 +151,7 @@ with col_weather:
         </div>
     """, unsafe_allow_html=True)
 
-# ---------------- SIDEBAR (БЕЗ ИЗМЕНЕНИЙ) ----------------
+# ---------------- SIDEBAR ----------------
 st.sidebar.header("Parameters")
 c1, c2, c3 = st.sidebar.columns(3)
 if c1.button("D"): st.session_state.active_field = 'D'
@@ -172,7 +169,7 @@ draw_f("Thickness", st.session_state.t_val, 't')
 draw_f("Width", st.session_state.B_val, 'B')
 st.sidebar.write("---")
 
-# ---------------- KEYPAD (БЕЗ ИЗМЕНЕНИЙ) ----------------
+# ---------------- KEYPAD ----------------
 k_cols = st.sidebar.columns(3)
 keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'C']
 for i, k in enumerate(keys):
@@ -186,10 +183,11 @@ for i, k in enumerate(keys):
 
 calc_btn = st.sidebar.button("CALCULATE", type="primary", use_container_width=True)
 
-# ---------------- TIMER (ОПТИМИЗИРОВАН - МЕНЬШЕ ОБНОВЛЕНИЙ) ----------------
+# ---------------- TIMER ----------------
 timer_area = st.empty()
 
-@st.fragment(run_every=2)  # ОПТИМИЗАЦИЯ: было 1, стало 2 секунды
+
+@st.fragment(run_every=1)
 def run_timer():
     if st.session_state.start_ts:
         el = int(time.time() - st.session_state.start_ts)
@@ -211,8 +209,7 @@ def run_timer():
 
 
 run_timer()
-
-# ---------------- CALCULATION (БЕЗ ИЗМЕНЕНИЙ) ----------------
+# ---------------- CALCULATION ----------------
 if calc_btn:
     try:
         new_start = time.time()
@@ -255,9 +252,5 @@ if calc_btn:
                 wc1.markdown(f"**INNER**  \nAC: {w['ac_in']}  \nDC: {w['dc_in']}")
                 wc2.markdown(f"**OUTER**  \nAC: {w['ac_out']}  \nDC: {w['dc_out']}")
             st.success("✅ 100% Accuracy Confirmed")
-            
-        # ОПТИМИЗАЦИЯ: принудительный сбор мусора после расчета
-        gc.collect()
-        
     except Exception as e:
         st.sidebar.error(f"❌ Error: {e}")
