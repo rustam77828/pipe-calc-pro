@@ -238,8 +238,9 @@ if calc_btn:
             st.subheader("📐 Geometry & Setup")
             r1, r2 = st.columns(2)
             with r1:
-                st.metric("ENTER ANGLE", f"{int(a_in)}° {int(round((a_in - int(a_in)) * 60))}'")
-                st.metric("EXIT ANGLE", f"{int(a_out)}° {int(round((a_out - int(a_out)) * 60))}'")
+                # 🔧 ИСПРАВЛЕНО: убрал round(), оставил только int()
+                st.metric("ENTER ANGLE", f"{int(a_in)}° {int((a_in - int(a_in)) * 60)}'")
+                st.metric("EXIT ANGLE", f"{int(a_out)}° {int((a_out - int(a_out)) * 60)}'")
             with r2:
                 st.metric("Inner Radius", f"{Ri:.2f} mm")
                 st.info(f"⚙️ SHIMS: {get_shims(t)}")
