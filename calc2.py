@@ -108,12 +108,9 @@ if 'start_ts' not in st.session_state:
 
 # ---------------- ENGINEERING ----------------
 def get_shims(t):
-    if t in [4.7625, 6.35, 7.9375]:
-        return "4.5 mm"
-    elif t in [9.525, 11.1125, 12.7]:
-        return "5.0 mm"
-    elif t >= 15.875:
-        return "5.5 mm"
+    if t <= 8: return "4.5 mm"
+    if t <= 13: return "5.0 mm"
+    if t >= 14: return "5.5 mm"
     return "Not defined"
 
 
