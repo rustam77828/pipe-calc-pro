@@ -3,6 +3,7 @@ import math
 import time
 import requests
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,26 +13,22 @@ st.set_page_config(page_title="Production Setup", page_icon="⚙️", layout="wi
 # ---------------- CSS ----------------
 st.markdown("""
 <style>
-
 [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     gap: 5px !important;
 }
-
 [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"] > div {
     width: 33% !important;
     flex: 1 1 33% !important;
     min-width: 0 !important;
 }
-
 .stButton > button {
     width: 100% !important;
     height: 50px !important;
     font-size: 20px !important;
 }
-
 .weather-text {
     text-align: left;
     font-size: 45px;
@@ -39,7 +36,6 @@ st.markdown("""
     margin-bottom: -10px;
     line-height: 1;
 }
-
 .weather-sub {
     text-align: left;
     font-size: 14px;
@@ -47,16 +43,15 @@ st.markdown("""
     margin: 0;
     padding-left: 5px;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
 
 # ---------------- WEATHER FUNCTION ----------------
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=3600)
 def get_weather(city):
     raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
-    if not raw_key: return "No Key"
+    if not raw_key: return "No Key", None
 
     api_key = raw_key.strip()
     url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
@@ -70,26 +65,351 @@ def get_weather(city):
             wind_kmh = math.floor(data['wind']['speed'] * 3.6)
 
             main = data['weather'][0]['main'].lower()
+            description = data['weather'][0]['description'].lower()
 
-            current_time = data['dt']
             sunrise = data['sys']['sunrise']
             sunset = data['sys']['sunset']
-            is_night = current_time < sunrise or current_time > sunset
+
+            if "dust" in main or "sand" in main or "dust" in description:
+                weather_type = "dust"
+            elif "cloud" in main:
+                weather_type = "cloud"
+            elif "rain" in main or "drizzle" in main:
+                weather_type = "rain"
+            else:
+                weather_type = "clear"
 
             if "clear" in main:
-                icon = "🌙" if is_night else "☀️"
+                icon = "☀️"
             elif "cloud" in main:
                 icon = "☁️"
             elif "rain" in main or "drizzle" in main:
                 icon = "🌧️"
             else:
-                icon = "☁️" if is_night else "⛅"
+                icon = "⛅"
 
-            return f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}% | 💨 {wind_kmh} km/h</span>"
-        return f"Err {res.status_code}"
+            weather_text = f"{temp}°C {icon} <span style='font-size: 20px; vertical-align: middle;'>| 💧{hum}% | 💨 {wind_kmh} km/h</span>"
+
+            sun_data = {
+                "sunrise": sunrise,
+                "sunset": sunset,
+                "weather_type": weather_type,
+            }
+            return weather_text, sun_data
+        return f"Err {res.status_code}", None
     except:
-        return "Offline"
+        return "Offline", None
 
+
+# ---------------- ФУНКЦИЯ ДЛЯ ОПРЕДЕЛЕНИЯ ФАЗЫ ДНЯ ----------------
+def get_time_of_day_phase(current_time):
+    """Возвращает фазу дня по времени (UTC)"""
+    hour = datetime.fromtimestamp(current_time).hour
+
+    if 6 <= hour < 12:
+        return "🌅 УТРО", "Солнце поднимается к зениту", "#FFA500"
+    elif 12 <= hour < 18:
+        return "☀️ ДЕНЬ", "Солнце в наивысшей точке и начинает опускаться", "#FFD700"
+    elif 18 <= hour < 24:
+        return "🌆 ВЕЧЕР", "Солнце заходит, наступают сумерки", "#FF8844"
+    else:
+        return "🌙 НОЧЬ", "Солнце находится под горизонтом", "#6688AA"
+
+
+# ---------------- ГРАФИК СОЛНЦА (С ФАЗАМИ ДНЯ) ----------------
+def get_sun_graph_html():
+    _, sun_data = get_weather("Tel Aviv")
+
+    if not sun_data:
+        return "<div style='text-align:center; padding:20px;'>⚠️ Нет данных</div>"
+
+    sunrise = sun_data["sunrise"]
+    sunset = sun_data["sunset"]
+    weather_type = sun_data["weather_type"]
+
+    # Цвета фона
+    if weather_type == "dust":
+        bg_top = "#c2a366"
+        bg_bottom = "#8b6914"
+        sun_color_start = "#FFD700"
+        sun_color_end = "#FF8C00"
+        sun_glow = "rgba(255,200,0,0.4)"
+        arc_color = "#FFD700"
+        icon = "🏜️"
+        title = "ПЫЛЬНАЯ БУРЯ"
+    elif weather_type == "cloud":
+        bg_top = "#8a8a8a"
+        bg_bottom = "#5a5a5a"
+        sun_color_start = "#CCCCAA"
+        sun_color_end = "#999966"
+        sun_glow = "rgba(200,200,150,0.3)"
+        arc_color = "#DDD"
+        icon = "☁️"
+        title = "ПАСМУРНО"
+    elif weather_type == "rain":
+        bg_top = "#4a4a6a"
+        bg_bottom = "#2a2a4a"
+        sun_color_start = "#AAAACC"
+        sun_color_end = "#8888AA"
+        sun_glow = "rgba(150,150,200,0.3)"
+        arc_color = "#8899AA"
+        icon = "🌧️"
+        title = "ДОЖДЬ"
+    else:
+        bg_top = "#4AB5E8"
+        bg_bottom = "#1E6B8F"
+        sun_color_start = "#FFF176"
+        sun_color_end = "#FF8F00"
+        sun_glow = "rgba(255,215,0,0.5)"
+        arc_color = "#FFD700"
+        icon = "☀️"
+        title = "ЯСНЫЙ ДЕНЬ"
+
+    html_code = f"""
+    <div id="sunGraphContainer" style="background: linear-gradient(135deg, {bg_top}, {bg_bottom}); border-radius: 20px; padding: 15px; margin-top: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); width: 100%;">
+
+        <!-- Блок с фазой дня -->
+        <div id="timeOfDayBlock" style="text-align: center; margin-bottom: 10px;">
+            <span id="phaseName" style="font-size: 20px; font-weight: bold; color: #FFD700;">--</span>
+            <span id="phaseDesc" style="font-size: 12px; color: rgba(255,255,255,0.8); display: block;">--</span>
+        </div>
+
+        <div style="text-align: center; color: white; margin-bottom: 12px;">
+            <span id="titleSpan" style="font-size: 18px;">{icon} {title} {icon}</span>
+        </div>
+
+        <canvas id="sunPathCanvas" width="450" height="150" style="width: 100%; height: auto; max-width: 450px; margin: 0 auto; display: block; border-radius: 10px;"></canvas>
+
+        <div style="text-align: center; padding: 10px 0 5px 0;">
+            <span id="directionSpan" style="color: white; background: rgba(0,0,0,0.6); padding: 6px 16px; border-radius: 25px; font-size: 15px; font-weight: bold;">--</span>
+        </div>
+    </div>
+
+    <script>
+    (function() {{
+        const canvas = document.getElementById('sunPathCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        const sunrise = {sunrise};
+        const sunset = {sunset};
+        const sunColorStart = '{sun_color_start}';
+        const sunColorEnd = '{sun_color_end}';
+        const sunGlow = '{sun_glow}';
+        const arcColor = '{arc_color}';
+
+        const dayBgTop = '{bg_top}';
+        const dayBgBottom = '{bg_bottom}';
+        const nightBgTop = '#0a0a2a';
+        const nightBgBottom = '#1a1a3e';
+
+        const directionSpan = document.getElementById('directionSpan');
+        const titleSpan = document.getElementById('titleSpan');
+        const phaseNameSpan = document.getElementById('phaseName');
+        const phaseDescSpan = document.getElementById('phaseDesc');
+
+        // Границы дуги
+        const leftMargin = 25;
+        const rightMargin = w - 25;
+
+        function getY(x) {{
+            const t = (x - leftMargin) / (rightMargin - leftMargin);
+            return (h - 18) - 4.2 * (h - 40) * t * (1 - t);
+        }}
+
+        function getTimeOfDayPhase(timestamp) {{
+            const date = new Date(timestamp * 1000);
+            const hour = date.getHours();
+
+            if (hour >= 6 && hour < 12) {{
+                return {{color: "#FFA500" }};
+            }} else if (hour >= 12 && hour < 18) {{
+                return {{color: "#FFD700" }};
+            }} else if (hour >= 18 && hour < 24) {{
+                return {{color: "#FF8844" }};
+            }} else {{
+                return {{color: "#6688AA" }};
+            }}
+        }}
+
+        function updateContainerBackground(isNight) {{
+            const container = document.getElementById('sunGraphContainer');
+            if (container) {{
+                if (isNight) {{
+                    container.style.background = `linear-gradient(135deg, ${{nightBgTop}}, ${{nightBgBottom}})`;
+                    if (titleSpan) titleSpan.textContent = '';
+                }} else {{
+                    container.style.background = `linear-gradient(135deg, ${{dayBgTop}}, ${{dayBgBottom}})`;
+                    if (titleSpan) titleSpan.textContent = '{icon} {title} {icon}';
+                }}
+            }}
+        }}
+
+        function draw() {{
+            const now = Math.floor(Date.now() / 1000);
+            const isNight = now < sunrise || now > sunset;
+
+            let progress, percent, directionText;
+            const dayLength = sunset - sunrise;
+
+            // Получаем фазу дня
+            const phase = getTimeOfDayPhase(now);
+            if (phaseNameSpan) phaseNameSpan.textContent = phase.name;
+            if (phaseDescSpan) phaseDescSpan.textContent = phase.desc;
+            if (phaseNameSpan) phaseNameSpan.style.color = phase.color;
+
+            updateContainerBackground(isNight);
+
+            if (isNight) {{
+                const nextSunrise = sunrise + 86400;
+                const nightLength = nextSunrise - sunset;
+                if (nightLength > 0) {{
+                    progress = (now - sunset) / nightLength;
+                }} else {{
+                    progress = 0.5;
+                }}
+                progress = Math.max(0, Math.min(1, progress));
+                percent = Math.floor(progress * 100);
+                directionText = ` ${{percent}}%`;
+            }} else {{
+                if (dayLength > 0) {{
+                    progress = (now - sunrise) / dayLength;
+                }} else {{
+                    progress = 0.5;
+                }}
+                progress = Math.max(0, Math.min(1, progress));
+
+                if (progress <= 0.5) {{
+                    percent = Math.floor(progress * 200);
+                    directionText = `⬆️ ПОДЪЁМ +${{percent}}%`;
+                }} else {{
+                    percent = Math.floor((1 - progress) * 200);
+                    directionText = `⬇️ СПУСК -${{percent}}%`;
+                }}
+            }}
+
+            if (directionSpan) directionSpan.textContent = directionText;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Дуга
+            ctx.beginPath();
+            ctx.moveTo(leftMargin, getY(leftMargin));
+            for (let x = leftMargin; x <= rightMargin; x++) {{
+                ctx.lineTo(x, getY(x));
+            }}
+            ctx.strokeStyle = arcColor;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([6, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Восход
+            ctx.fillStyle = '#FFA500';
+            ctx.beginPath();
+            ctx.arc(leftMargin, getY(leftMargin), 6, 0, 2*Math.PI);
+            ctx.fill();
+
+            // Зенит
+            const zenithX = leftMargin + (rightMargin - leftMargin) / 2;
+            if (!isNight) {{
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(zenithX, getY(zenithX), 7, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 11px Arial';
+                ctx.fillText('ЗЕНИТ', zenithX - 22, getY(zenithX) - 10);
+            }}
+
+            // Закат
+            ctx.fillStyle = '#FFA500';
+            ctx.beginPath();
+            ctx.arc(rightMargin, getY(rightMargin), 6, 0, 2*Math.PI);
+            ctx.fill();
+
+            // Светило
+            const x = leftMargin + progress * (rightMargin - leftMargin);
+            const y = getY(x);
+            const radius = 16;
+
+            ctx.shadowBlur = 18;
+            ctx.shadowColor = sunGlow;
+
+            let grad;
+            if (isNight) {{
+                grad = ctx.createRadialGradient(x, y, radius*0.3, x, y, radius);
+                grad.addColorStop(0, '#E8E8E8');
+                grad.addColorStop(1, '#A0A0A0');
+            }} else {{
+                grad = ctx.createRadialGradient(x, y, radius*0.3, x, y, radius);
+                grad.addColorStop(0, sunColorStart);
+                grad.addColorStop(1, sunColorEnd);
+            }}
+            ctx.fillStyle = grad;
+
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, 2*Math.PI);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = isNight ? '#ccc' : '#FF6600';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Блик
+            ctx.beginPath();
+            ctx.arc(x-5, y-5, 5, 0, 2*Math.PI);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fill();
+
+            // Стрелка
+            if (!isNight) {{
+                ctx.fillStyle = progress <= 0.5 ? '#88FF88' : '#FF8888';
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText(progress <= 0.5 ? '⬆️' : '⬇️', x-12, y-22);
+            }}
+
+            // Процент
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 16px Arial';
+            ctx.shadowBlur = 3;
+            ctx.fillText(percent + '%', x-12, y+26);
+            ctx.shadowBlur = 0;
+        }}
+
+        draw();
+        setInterval(draw, 600000);
+    }})();
+    </script>
+    """
+    return html_code
+
+
+# ---------------- HEADER ----------------
+col_title, col_weather = st.columns([1.5, 1])
+
+with col_title:
+    st.title("⚙️ Production Setup Card")
+    st.markdown("### Engineering Calculation")
+
+with col_weather:
+    cities = ["Beersheba", "Tel Aviv", "Eilat"]
+    for city in cities:
+        weather_data, _ = get_weather(city)
+        st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
+        st.markdown(f'<p class="weather-sub">{city}</p>', unsafe_allow_html=True)
+
+    st.markdown("""
+        <div style="text-align: right; margin-top: 20px; font-size: 10px; color: gray;">
+            Source: <a href="https://openweathermap.org" target="_blank" style="color: gray; text-decoration: none;">OpenWeatherMap.org</a>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # ГРАФИК СОЛНЦА
+    st.components.v1.html(get_sun_graph_html(), height=270)
 
 # ---------------- STATE ----------------
 if "start" in st.query_params and 'start_ts' not in st.session_state:
@@ -127,26 +447,6 @@ WELDING_TABLE = [
     {"t": 19.05, "speed": 1.1, "ac_in": "520A/34V", "dc_in": "1150A/32V", "ac_out": "520A/32V", "dc_out": "1200A/31V"},
     {"t": 25.4, "speed": 1.1, "ac_in": "550A/34V", "dc_in": "1250A/32V", "ac_out": "550A/32V", "dc_out": "1300A/31V"}
 ]
-
-# ---------------- HEADER ----------------
-col_title, col_weather = st.columns([1.5, 1])
-
-with col_title:
-    st.title("⚙️ Production Setup Card")
-    st.markdown("### Engineering Calculation")
-
-with col_weather:
-    cities = ["Beersheba", "Tel Aviv", "Eilat"]
-    for city in cities:
-        weather_data = get_weather(city)
-        st.markdown(f'<p class="weather-text">{weather_data}</p>', unsafe_allow_html=True)
-        st.markdown(f'<p class="weather-sub">{city}</p>', unsafe_allow_html=True)
-
-    st.markdown("""
-        <div style="text-align: right; margin-top: 20px; font-size: 10px; color: gray;">
-            Source: <a href="https://openweathermap.org" target="_blank" style="color: gray; text-decoration: none;">OpenWeatherMap.org</a>
-        </div>
-    """, unsafe_allow_html=True)
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("Parameters")
@@ -206,6 +506,7 @@ def run_timer():
 
 
 run_timer()
+
 # ---------------- CALCULATION ----------------
 if calc_btn:
     try:
@@ -235,7 +536,6 @@ if calc_btn:
             st.subheader("📐 Geometry & Setup")
             r1, r2 = st.columns(2)
             with r1:
-                # 🔧 ИСПРАВЛЕНО: убрал round(), оставил только int()
                 st.metric("ENTER ANGLE", f"{int(a_in)}° {int((a_in - int(a_in)) * 60)}'")
                 st.metric("EXIT ANGLE", f"{int(a_out)}° {int((a_out - int(a_out)) * 60)}'")
             with r2:
