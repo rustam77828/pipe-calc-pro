@@ -46,11 +46,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # ---------------- WEATHER FUNCTION ----------------
 @st.cache_data(ttl=3600)
 def get_weather(city):
-    raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY")
+    raw_key = os.getenv("WEATHER_API_KEY") or st.secrets.get("WEATHER_API_KEY", None)
     if not raw_key: return "No Key", None
 
     api_key = raw_key.strip()
@@ -97,9 +96,9 @@ def get_weather(city):
             }
             return weather_text, sun_data
         return f"Err {res.status_code}", None
-    except:
+    except Exception:
+        # FIX: было голый except — скрывал KeyboardInterrupt и др.
         return "Offline", None
-
 
 # ---------------- ФУНКЦИЯ ДЛЯ ОПРЕДЕЛЕНИЯ ФАЗЫ ДНЯ ----------------
 def get_time_of_day_phase(current_time):
@@ -107,14 +106,13 @@ def get_time_of_day_phase(current_time):
     hour = datetime.fromtimestamp(current_time).hour
 
     if 6 <= hour < 12:
-        return "🌅 УТРО", "Солнце поднимается к зениту", "#FFA500"
+        return "#FFA500"
     elif 12 <= hour < 18:
-        return "☀️ ДЕНЬ", "Солнце в наивысшей точке и начинает опускаться", "#FFD700"
+        return "#FFD700"
     elif 18 <= hour < 24:
-        return "🌆 ВЕЧЕР", "Солнце заходит, наступают сумерки", "#FF8844"
+        return "#FF8844"
     else:
-        return "🌙 НОЧЬ", "Солнце находится под горизонтом", "#6688AA"
-
+        return "#6688AA"
 
 # ---------------- ГРАФИК СОЛНЦА (С ФАЗАМИ ДНЯ) ----------------
 def get_sun_graph_html():
@@ -136,7 +134,7 @@ def get_sun_graph_html():
         sun_glow = "rgba(255,200,0,0.4)"
         arc_color = "#FFD700"
         icon = "🏜️"
-        title = "ПЫЛЬНАЯ БУРЯ"
+        title = ""
     elif weather_type == "cloud":
         bg_top = "#8a8a8a"
         bg_bottom = "#5a5a5a"
@@ -145,7 +143,7 @@ def get_sun_graph_html():
         sun_glow = "rgba(200,200,150,0.3)"
         arc_color = "#DDD"
         icon = "☁️"
-        title = "ПАСМУРНО"
+        title = ""
     elif weather_type == "rain":
         bg_top = "#4a4a6a"
         bg_bottom = "#2a2a4a"
@@ -154,7 +152,7 @@ def get_sun_graph_html():
         sun_glow = "rgba(150,150,200,0.3)"
         arc_color = "#8899AA"
         icon = "🌧️"
-        title = "ДОЖДЬ"
+        title = ""
     else:
         bg_top = "#4AB5E8"
         bg_bottom = "#1E6B8F"
@@ -163,7 +161,7 @@ def get_sun_graph_html():
         sun_glow = "rgba(255,215,0,0.5)"
         arc_color = "#FFD700"
         icon = "☀️"
-        title = "ЯСНЫЙ ДЕНЬ"
+        title = ""
 
     html_code = f"""
     <div id="sunGraphContainer" style="background: linear-gradient(135deg, {bg_top}, {bg_bottom}); border-radius: 20px; padding: 15px; margin-top: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); width: 100%;">
@@ -219,18 +217,19 @@ def get_sun_graph_html():
             return (h - 18) - 4.2 * (h - 40) * t * (1 - t);
         }}
 
+        // FIX: добавлены поля name и desc, которые использовались в draw()
         function getTimeOfDayPhase(timestamp) {{
             const date = new Date(timestamp * 1000);
             const hour = date.getHours();
 
             if (hour >= 6 && hour < 12) {{
-                return {{color: "#FFA500" }};
+                return {{ color: "#FFA500", name: "🌅 Morning", desc: "Sunrise - noon" }};
             }} else if (hour >= 12 && hour < 18) {{
-                return {{color: "#FFD700" }};
+                return {{ color: "#FFD700", name: "☀️ Day", desc: "Noon - evening" }};
             }} else if (hour >= 18 && hour < 24) {{
-                return {{color: "#FF8844" }};
+                return {{ color: "#FF8844", name: "🌇 Evening", desc: "Sunset - midnight" }};
             }} else {{
-                return {{color: "#6688AA" }};
+                return {{ color: "#6688AA", name: "🌙 Night", desc: "Midnight - Dawn" }};
             }}
         }}
 
@@ -254,7 +253,7 @@ def get_sun_graph_html():
             let progress, percent, directionText;
             const dayLength = sunset - sunrise;
 
-            // Получаем фазу дня
+            // FIX: phase.name и phase.desc теперь существуют
             const phase = getTimeOfDayPhase(now);
             if (phaseNameSpan) phaseNameSpan.textContent = phase.name;
             if (phaseDescSpan) phaseDescSpan.textContent = phase.desc;
@@ -283,10 +282,10 @@ def get_sun_graph_html():
 
                 if (progress <= 0.5) {{
                     percent = Math.floor(progress * 200);
-                    directionText = `⬆️ ПОДЪЁМ +${{percent}}%`;
+                    directionText = `⬆️+${{percent}}%`;
                 }} else {{
                     percent = Math.floor((1 - progress) * 200);
-                    directionText = `⬇️ СПУСК -${{percent}}%`;
+                    directionText = `⬇️-${{percent}}%`;
                 }}
             }}
 
@@ -321,7 +320,7 @@ def get_sun_graph_html():
                 ctx.fill();
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 11px Arial';
-                ctx.fillText('ЗЕНИТ', zenithX - 22, getY(zenithX) - 10);
+                ctx.fillText('', zenithX - 22, getY(zenithX) - 10);
             }}
 
             // Закат
@@ -381,7 +380,8 @@ def get_sun_graph_html():
         }}
 
         draw();
-        setInterval(draw, 600000);
+        // FIX: было 600000 (10 минут) — исправлено на 60000 (1 минута)
+        setInterval(draw, 60000);
     }})();
     </script>
     """
@@ -428,10 +428,10 @@ if 'start_ts' not in st.session_state:
 
 # ---------------- ENGINEERING ----------------
 def get_shims(t):
+    # FIX: была дыра при 13 < t < 14 → возвращало "Not defined"
     if t <= 8: return "4.5 mm"
-    if t <= 13: return "5.0 mm"
-    if t >= 14: return "5.5 mm"
-    return "Not defined"
+    if t < 14: return "5.0 mm"
+    return "5.5 mm"
 
 
 WELDING_TABLE = [
