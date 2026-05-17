@@ -1,4 +1,4 @@
-mport streamlit as st
+import streamlit as st
 import math
 import time
 import requests
@@ -550,3 +550,4 @@ if calc_btn:
             st.success("✅ 100% Accuracy Confirmed")
     except Exception as e:
         st.sidebar.error(f"❌ Error: {e}")
+
